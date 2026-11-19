@@ -1,0 +1,356 @@
+---
+const apiUrl = import.meta.env.PUBLIC_API_URL ?? "http://localhost:3000";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content="Family Cabin project management dashboard" />
+    <title>Family Cabin PM</title>
+    <style is:global>
+      :root {
+        font-family: Arial, sans-serif;
+        color: #263b38;
+        background: #e7ddd0;
+        font-synthesis: none;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+      }
+
+      .app-shell {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        min-height: 100vh;
+        max-width: 1280px;
+        margin: 0 auto;
+        background: #a9d0c4;
+      }
+
+      header {
+        grid-column: 1 / -1;
+        padding: 1.5rem 2rem;
+        background: #fff;
+        border-bottom: 1px solid #d5e0dc;
+      }
+
+      header h1 {
+        margin: 0;
+        font-size: 1.7rem;
+      }
+
+      header p {
+        margin: 0.25rem 0 0;
+        color: #55706a;
+      }
+
+      aside {
+        padding: 2rem 1rem;
+        background: #508879;
+      }
+
+      nav {
+        display: grid;
+        gap: 0.5rem;
+      }
+
+      nav a {
+        padding: 0.8rem 1rem;
+        color: #fff;
+        text-decoration: none;
+        border-radius: 0.35rem;
+      }
+
+      nav a[aria-current="page"],
+      nav a:hover {
+        background: #3e7063;
+      }
+
+      .logout-button {
+        margin-top: 1rem;
+        padding: 0.65rem 1rem;
+        color: #fff;
+        background: transparent;
+        border: 1px solid rgb(255 255 255 / 70%);
+        border-radius: 0.35rem;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      .logout-button:hover {
+        background: #3e7063;
+      }
+
+      .welcome {
+        margin-top: 3rem;
+        color: #fff;
+        font-size: 0.9rem;
+      }
+
+      main {
+        padding: 2rem;
+      }
+
+      .dashboard-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.35fr) minmax(260px, 1fr);
+        gap: 1.5rem;
+      }
+
+      h2 {
+        margin-top: 0;
+        color: #fff;
+      }
+
+      .card,
+      .action {
+        padding: 1.25rem;
+        background: #fff;
+        border-radius: 0.65rem;
+        box-shadow: 0 2px 6px rgb(38 59 56 / 10%);
+      }
+
+      .project-list,
+      .announcement-list {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .project-card h3,
+      .announcement-card h3 {
+        margin: 0 0 0.75rem;
+        font-size: 1.35rem;
+      }
+
+      .project-meta {
+        display: grid;
+        gap: 0.35rem;
+        color: #55706a;
+        font-size: 1.05rem;
+      }
+
+      .project-meta > div {
+        position: relative;
+        width: fit-content;
+        padding-left: 1rem;
+      }
+
+      .project-meta > div::before {
+        content: "\2022";
+        position: absolute;
+        left: 0;
+      }
+
+      .tag {
+        padding: 0.25rem 0.55rem;
+        color: #285447;
+        background: #dceee8;
+        border-radius: 999px;
+      }
+
+      .urgent {
+        color: #8d2929;
+        background: #f9dede;
+      }
+
+      .announcement-card.urgent {
+        border: 3px solid #d84a4a;
+      }
+
+      .action {
+        display: block;
+        margin-top: 1rem;
+        color: #285447;
+        font-weight: bold;
+        text-decoration: none;
+        text-align: center;
+      }
+
+      @media (max-width: 700px) {
+        .app-shell {
+          display: block;
+        }
+
+        aside {
+          padding: 1rem;
+        }
+
+        nav {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        .welcome {
+          margin: 1rem 0 0;
+        }
+
+        main {
+          padding: 1.25rem;
+        }
+
+        .dashboard-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header>
+        <h1>Family Cabin PM</h1>
+        <p>Project management for the family cabin</p>
+      </header>
+
+      <aside>
+        <nav aria-label="Main navigation">
+          <a href="/" aria-current="page">Dashboard</a>
+          <a href="/projects">Projects</a>
+          <a href="/announcements">Announcements</a>
+          <a href="/account">Account settings</a>
+        </nav>
+        <p class="welcome">Welcome, <span id="user-name">family member</span></p>
+        <button id="logout-button" class="logout-button" type="button">Log out</button>
+      </aside>
+
+      <main>
+        <div class="dashboard-grid">
+          <section aria-labelledby="projects-heading">
+            <h2 id="projects-heading">Current projects</h2>
+            <div id="dashboard-projects" class="project-list"></div>
+            <a class="action" href="/projects">Create a new project</a>
+          </section>
+
+          <section aria-labelledby="announcements-heading">
+            <h2 id="announcements-heading">Recent announcements</h2>
+            <div id="dashboard-announcements" class="announcement-list"></div>
+            <a class="action" href="/announcements">Post an announcement</a>
+          </section>
+        </div>
+      </main>
+    </div>
+    <script define:vars={{ apiUrl }}>
+      const userName = document.querySelector("#user-name");
+      const logoutButton = document.querySelector("#logout-button");
+      const dashboardProjects = document.querySelector("#dashboard-projects");
+      const dashboardAnnouncements = document.querySelector("#dashboard-announcements");
+
+      function createProjectCard(project) {
+        const card = document.createElement("article");
+        card.className = "card project-card";
+
+        const title = document.createElement("h3");
+        title.textContent = project.title;
+
+        const meta = document.createElement("div");
+        meta.className = "project-meta";
+
+        const assignee = document.createElement("div");
+        assignee.textContent = project.assigneeId ? "Assigned" : "Assigned to: Unassigned";
+
+        const priority = document.createElement("div");
+        priority.className = `tag${project.priority === "urgent" ? " urgent" : ""}`;
+        priority.textContent = project.priority;
+
+        const status = document.createElement("div");
+        status.className = "tag";
+        status.textContent = project.status.replace("_", " ");
+
+        meta.append(assignee, priority, status);
+        card.append(title, meta);
+        return card;
+      }
+
+      function createAnnouncementCard(announcement) {
+        const card = document.createElement("article");
+        card.className = `card announcement-card${announcement.isUrgent ? " urgent" : ""}`;
+
+        const title = document.createElement("h3");
+        title.textContent = announcement.isUrgent
+          ? `Urgent: ${announcement.title}`
+          : announcement.title;
+
+        const body = document.createElement("p");
+        body.textContent = announcement.body;
+
+        card.append(title, body);
+        return card;
+      }
+
+      async function loadDashboardData() {
+        const [projectResponse, announcementResponse] = await Promise.all([
+          fetch(`${apiUrl}/api/v1/projects`, { credentials: "include" }),
+          fetch(`${apiUrl}/api/v1/announcements`, { credentials: "include" })
+        ]);
+
+        if (projectResponse.status === 401 || announcementResponse.status === 401) {
+          window.location.href = "/login";
+          return;
+        }
+
+        if (projectResponse.ok && dashboardProjects instanceof HTMLElement) {
+          const { projects } = await projectResponse.json();
+          dashboardProjects.replaceChildren();
+          projects.slice(0, 5).forEach((project) => {
+            dashboardProjects.append(createProjectCard(project));
+          });
+          if (projects.length === 0) {
+            const empty = document.createElement("p");
+            empty.textContent = "No projects yet.";
+            dashboardProjects.append(empty);
+          }
+        }
+
+        if (announcementResponse.ok && dashboardAnnouncements instanceof HTMLElement) {
+          const { announcements } = await announcementResponse.json();
+          dashboardAnnouncements.replaceChildren();
+          announcements.slice(0, 5).forEach((announcement) => {
+            dashboardAnnouncements.append(createAnnouncementCard(announcement));
+          });
+          if (announcements.length === 0) {
+            const empty = document.createElement("p");
+            empty.textContent = "No announcements yet.";
+            dashboardAnnouncements.append(empty);
+          }
+        }
+      }
+
+      async function checkAuthentication() {
+        const response = await fetch(`${apiUrl}/api/v1/auth/me`, {
+          credentials: "include"
+        });
+
+        if (!response.ok) {
+          window.location.href = "/login";
+          return;
+        }
+
+        const result = await response.json();
+        if (userName instanceof HTMLElement) {
+          userName.textContent = result.user.name;
+        }
+      }
+
+      logoutButton?.addEventListener("click", async () => {
+        logoutButton.setAttribute("disabled", "true");
+        await fetch(`${apiUrl}/api/v1/auth/logout`, {
+          method: "POST",
+          credentials: "include"
+        });
+        window.location.href = "/login";
+      });
+
+      checkAuthentication().catch(() => {
+        window.location.href = "/login";
+      });
+      loadDashboardData().catch(() => {
+        window.location.href = "/login";
+      });
+    </script>
+  </body>
+</html>

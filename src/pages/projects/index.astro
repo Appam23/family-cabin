@@ -1,0 +1,281 @@
+---
+const apiUrl = import.meta.env.PUBLIC_API_URL ?? "http://localhost:3000";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Projects | Family Cabin PM</title>
+    <style is:global>
+      :root { font-family: Arial, sans-serif; color: #263b38; background: #e7ddd0; }
+      * { box-sizing: border-box; }
+      body { margin: 0; }
+      main { width: min(100% - 2rem, 56rem); margin: 2rem auto; }
+      a { color: #285447; }
+      .topbar, .card { padding: 1.25rem; background: #fff; border-radius: 0.65rem; }
+      .topbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+      h1 { margin: 0; }
+      form { display: grid; gap: 1rem; margin: 1.5rem 0; }
+      label { display: grid; gap: 0.4rem; font-weight: bold; }
+      input, textarea, select, button { padding: 0.7rem; border: 1px solid #9db8b0; border-radius: 0.35rem; font: inherit; }
+      textarea { min-height: 7rem; resize: vertical; }
+      button { color: #fff; background: #508879; border: 0; font-weight: bold; cursor: pointer; }
+      button:hover { background: #3e7063; }
+      .project-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1rem; }
+      .project-action { padding: 0.85rem 1.15rem; background: #2f6f9f; }
+      .project-action:hover { background: #24577d; }
+      .project-action.secondary { color: #6b3b13; background: #f2c078; }
+      .project-action.secondary:hover { background: #e5aa54; }
+      .confirm-dialog { max-width: 24rem; padding: 0; border: 0; border-radius: 0.65rem; }
+      .confirm-dialog::backdrop { background: rgb(38 59 56 / 45%); }
+      .confirm-card { padding: 1.5rem; }
+      .confirm-card h2 { margin-top: 0; }
+      .confirm-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: flex-end; }
+      .confirm-actions .cancel { color: #285447; background: #dceee8; }
+      .project-list { display: grid; gap: 1rem; }
+      .meta { display: grid; gap: 0.5rem; color: #55706a; }
+      .meta > div { display: block; width: fit-content; }
+      .tag { padding: 0.25rem 0.55rem; background: #dceee8; border-radius: 999px; }
+      .message { min-height: 1.25rem; color: #8d2929; }
+      .success { color: #285447; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header class="topbar">
+        <h1>Projects</h1>
+        <a href="/">Back to dashboard</a>
+      </header>
+
+      <form id="project-form" class="card">
+        <h2>Create a project</h2>
+        <label for="title">Title <input id="title" name="title" required /></label>
+        <label for="description">
+          Description
+          <textarea id="description" name="description" required></textarea>
+        </label>
+        <label for="priority">
+          Priority
+          <select id="priority" name="priority">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
+        </label>
+        <label for="dueDate">Due date <input id="dueDate" name="dueDate" type="date" /></label>
+        <button type="submit">Create project</button>
+        <p id="form-message" class="message" role="status" aria-live="polite"></p>
+      </form>
+
+      <section aria-labelledby="all-projects">
+        <h2 id="all-projects">All projects</h2>
+        <form id="filters" class="card">
+          <label for="search">Search <input id="search" name="search" type="search" /></label>
+          <label for="status-filter">
+            Status
+            <select id="status-filter" name="status">
+              <option value="">All statuses</option>
+              <option value="open">Open</option>
+              <option value="in_progress">In progress</option>
+              <option value="completed">Completed</option>
+            </select>
+          </label>
+          <label for="priority-filter">
+            Priority
+            <select id="priority-filter" name="priority">
+              <option value="">All priorities</option>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+            </select>
+          </label>
+          <button type="submit">Apply filters</button>
+        </form>
+        <div id="project-list" class="project-list"></div>
+      </section>
+    </main>
+
+    <script define:vars={{ apiUrl }}>
+      const form = document.querySelector("#project-form");
+      const filters = document.querySelector("#filters");
+      const message = document.querySelector("#form-message");
+      const projectList = document.querySelector("#project-list");
+
+      function renderProjects(projects) {
+        if (!(projectList instanceof HTMLElement)) return;
+        projectList.replaceChildren();
+        for (const project of projects) {
+          const card = document.createElement("article");
+          card.className = "card";
+          const title = document.createElement("h3");
+          const titleLink = document.createElement("a");
+          titleLink.href = `/projects/${project._id}`;
+          titleLink.textContent = project.title;
+          title.append(titleLink);
+          const description = document.createElement("p");
+          description.textContent = project.description;
+          const claimButton = document.createElement("button");
+          claimButton.type = "button";
+          claimButton.className = "project-action";
+          claimButton.textContent = "I'll take this project";
+          claimButton.hidden = Boolean(project.assigneeId);
+          claimButton.addEventListener("click", async () => {
+            const response = await fetch(`${apiUrl}/api/v1/projects/${project._id}/claim`, {
+              method: "POST",
+              credentials: "include"
+            });
+            if (response.ok) {
+              await loadProjects();
+            }
+          });
+          const unclaimButton = document.createElement("button");
+          unclaimButton.type = "button";
+          unclaimButton.className = "project-action secondary";
+          unclaimButton.textContent = "Release my assignment";
+          unclaimButton.hidden = !project.canUnclaim;
+          unclaimButton.addEventListener("click", async () => {
+            if (!(await confirmRelease())) {
+              return;
+            }
+
+            const response = await fetch(`${apiUrl}/api/v1/projects/${project._id}/assignee`, {
+              method: "DELETE",
+              credentials: "include"
+            });
+            if (response.ok) {
+              await loadProjects();
+            }
+          });
+          const completeButton = document.createElement("button");
+          completeButton.type = "button";
+          completeButton.className = "project-action";
+          completeButton.textContent = "Mark complete";
+          completeButton.hidden = !project.canComplete;
+          completeButton.addEventListener("click", async () => {
+            const response = await fetch(`${apiUrl}/api/v1/projects/${project._id}/complete`, {
+              method: "POST",
+              credentials: "include"
+            });
+            if (response.ok) await loadProjects();
+          });
+          const reopenButton = document.createElement("button");
+          reopenButton.type = "button";
+          reopenButton.className = "project-action secondary";
+          reopenButton.textContent = "Reopen project";
+          reopenButton.hidden = !project.canReopen;
+          reopenButton.addEventListener("click", async () => {
+            const response = await fetch(`${apiUrl}/api/v1/projects/${project._id}/reopen`, {
+              method: "POST",
+              credentials: "include"
+            });
+            if (response.ok) await loadProjects();
+          });
+          const meta = document.createElement("div");
+          meta.className = "meta";
+          for (const [label, value] of [
+            ["Priority", project.priority],
+            ["Status", project.status]
+          ]) {
+            const tag = document.createElement("div");
+            tag.className = "tag";
+            tag.textContent = `${label}: ${value}`;
+            meta.append(tag);
+          }
+          if (project.dueDate) {
+            const dueDate = document.createElement("div");
+            dueDate.className = "due-date";
+            dueDate.textContent = `Due: ${new Date(project.dueDate).toLocaleDateString()}`;
+            meta.append(dueDate);
+          }
+          const actions = document.createElement("div");
+          actions.className = "project-actions";
+          actions.append(claimButton, unclaimButton, completeButton, reopenButton);
+          card.append(title, description, meta, actions);
+          projectList.append(card);
+        }
+      }
+
+      function confirmRelease() {
+        return new Promise((resolve) => {
+          const dialog = document.createElement("dialog");
+          dialog.className = "confirm-dialog";
+          dialog.innerHTML = `
+            <div class="confirm-card">
+              <h2>Release this project?</h2>
+              <p>Another family member will be able to claim it.</p>
+              <div class="confirm-actions">
+                <button type="button" class="cancel">Keep assignment</button>
+                <button type="button" class="release">Release project</button>
+              </div>
+            </div>
+          `;
+          const close = (confirmed) => {
+            dialog.close();
+            dialog.remove();
+            resolve(confirmed);
+          };
+          dialog.addEventListener("cancel", (event) => {
+            event.preventDefault();
+            close(false);
+          });
+          dialog.querySelector(".cancel")?.addEventListener("click", () => close(false));
+          dialog.querySelector(".release")?.addEventListener("click", () => close(true));
+          document.body.append(dialog);
+          dialog.showModal();
+        });
+      }
+
+      async function loadProjects(query = "") {
+        const response = await fetch(`${apiUrl}/api/v1/projects${query}`, {
+          credentials: "include"
+        });
+        if (response.status === 401) {
+          window.location.href = "/login";
+          return;
+        }
+        const result = await response.json();
+        renderProjects(result.projects);
+      }
+
+      filters?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!(filters instanceof HTMLFormElement)) return;
+        const query = new URLSearchParams(new FormData(filters)).toString();
+        await loadProjects(query ? `?${query}` : "");
+      });
+
+      form?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!(form instanceof HTMLFormElement) || !(message instanceof HTMLElement)) return;
+        message.className = "message";
+        message.textContent = "Creating project...";
+
+        const response = await fetch(`${apiUrl}/api/v1/projects`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(Object.fromEntries(new FormData(form)))
+        });
+        const result = await response.json();
+
+        if (!response.ok) {
+          message.textContent = result.details?.join(". ") ?? result.error ?? "Unable to create project.";
+          return;
+        }
+
+        form.reset();
+        message.className = "message success";
+        message.textContent = "Project created successfully.";
+        await loadProjects();
+      });
+
+      loadProjects().catch(() => {
+        if (message instanceof HTMLElement) message.textContent = "Unable to load projects.";
+      });
+    </script>
+  </body>
+</html>

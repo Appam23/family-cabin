@@ -1,0 +1,163 @@
+---
+const apiUrl = import.meta.env.PUBLIC_API_URL ?? "http://localhost:3000";
+const { id } = Astro.params;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Project details | Family Cabin PM</title>
+    <style is:global>
+      :root { font-family: Arial, sans-serif; color: #263b38; background: #e7ddd0; }
+      * { box-sizing: border-box; }
+      body { margin: 0; }
+      main { width: min(100% - 2rem, 44rem); margin: 2rem auto; }
+      .card { padding: 1.25rem; background: #fff; border-radius: 0.65rem; }
+      form { display: grid; gap: 1rem; margin-top: 1.25rem; }
+      label { display: grid; gap: 0.4rem; font-weight: bold; }
+      input, textarea, select, button { padding: 0.75rem; border: 1px solid #9db8b0; border-radius: 0.35rem; font: inherit; }
+      textarea { min-height: 7rem; resize: vertical; }
+      button { color: #fff; background: #508879; border: 0; font-weight: bold; cursor: pointer; }
+      .actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+      .delete { background: #a33d3d; }
+      .confirm-dialog { max-width: 24rem; padding: 0; border: 0; border-radius: 0.65rem; }
+      .confirm-dialog::backdrop { background: rgb(38 59 56 / 45%); }
+      .confirm-card { padding: 1.5rem; }
+      .confirm-card h2 { margin-top: 0; }
+      .confirm-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: flex-end; }
+      .confirm-actions .cancel { background: #dceee8; color: #285447; }
+      .confirm-actions .confirm-delete { background: #a33d3d; }
+      .message { min-height: 1.25rem; color: #8d2929; }
+      .message.success { color: #285447; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a href="/projects">Back to projects</a>
+      <section class="card">
+        <h1 id="project-title">Project details</h1>
+        <form id="project-form" hidden>
+          <label>Title <input id="title" name="title" required /></label>
+          <label>Description <textarea id="description" name="description" required></textarea></label>
+          <label>
+            Priority
+            <select id="priority" name="priority">
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+            </select>
+          </label>
+          <label>Due date <input id="dueDate" name="dueDate" type="date" /></label>
+          <div class="actions">
+            <button type="submit">Save changes</button>
+            <button id="delete-project" class="delete" type="button">Delete project</button>
+          </div>
+          <p id="form-message" class="message" role="status" aria-live="polite"></p>
+        </form>
+        <p id="read-only-message" hidden>You can view this project, but only the creator or an administrator can edit it.</p>
+      </section>
+    </main>
+
+    <script define:vars={{ apiUrl, id }}>
+      const form = document.querySelector("#project-form");
+      const message = document.querySelector("#form-message");
+      const titleHeading = document.querySelector("#project-title");
+      const readOnlyMessage = document.querySelector("#read-only-message");
+
+      async function loadProject() {
+        const response = await fetch(`${apiUrl}/api/v1/projects/${id}`, { credentials: "include" });
+        if (response.status === 401) {
+          window.location.href = "/login";
+          return;
+        }
+        if (response.status === 404) {
+          if (titleHeading instanceof HTMLElement) titleHeading.textContent = "Project not found";
+          return;
+        }
+
+        const { project } = await response.json();
+        if (titleHeading instanceof HTMLElement) titleHeading.textContent = project.title;
+        if (!(form instanceof HTMLFormElement)) return;
+
+        form.hidden = !project.canManage;
+        if (readOnlyMessage instanceof HTMLElement) readOnlyMessage.hidden = project.canManage;
+
+        const title = document.querySelector("#title");
+        const description = document.querySelector("#description");
+        const priority = document.querySelector("#priority");
+        const dueDate = document.querySelector("#dueDate");
+        if (title instanceof HTMLInputElement) title.value = project.title;
+        if (description instanceof HTMLTextAreaElement) description.value = project.description;
+        if (priority instanceof HTMLSelectElement) priority.value = project.priority;
+        if (dueDate instanceof HTMLInputElement && project.dueDate) {
+          dueDate.value = new Date(project.dueDate).toISOString().slice(0, 10);
+        }
+      }
+
+      form?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!(form instanceof HTMLFormElement) || !(message instanceof HTMLElement)) return;
+
+        const response = await fetch(`${apiUrl}/api/v1/projects/${id}`, {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(Object.fromEntries(new FormData(form)))
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          message.textContent = result.details?.join(". ") ?? result.error ?? "Unable to save.";
+          return;
+        }
+
+        if (titleHeading instanceof HTMLElement) titleHeading.textContent = result.project.title;
+        message.className = "message success";
+        message.textContent = "Project saved.";
+      });
+
+      async function deleteProject() {
+        const response = await fetch(`${apiUrl}/api/v1/projects/${id}`, {
+          method: "DELETE",
+          credentials: "include"
+        });
+        if (response.ok) window.location.href = "/projects";
+      }
+
+      document.querySelector("#delete-project")?.addEventListener("click", async () => {
+        const dialog = document.createElement("dialog");
+        dialog.className = "confirm-dialog";
+        dialog.innerHTML = `
+          <div class="confirm-card">
+            <h2>Delete this project?</h2>
+            <p>This project will be permanently removed.</p>
+            <div class="confirm-actions">
+              <button type="button" class="cancel">Keep project</button>
+              <button type="button" class="confirm-delete">Delete permanently</button>
+            </div>
+          </div>
+        `;
+
+        const close = (confirmed) => {
+          dialog.close();
+          dialog.remove();
+          if (confirmed) deleteProject();
+        };
+
+        dialog.querySelector(".cancel")?.addEventListener("click", () => close(false));
+        dialog.querySelector(".confirm-delete")?.addEventListener("click", () => close(true));
+        dialog.addEventListener("cancel", (event) => {
+          event.preventDefault();
+          close(false);
+        });
+
+        document.body.append(dialog);
+        dialog.showModal();
+      });
+
+      loadProject();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,123 @@
+---
+const apiUrl = import.meta.env.PUBLIC_API_URL ?? "http://localhost:3000";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Account Settings | Family Cabin PM</title>
+    <style is:global>
+      :root { font-family: Arial, sans-serif; color: #263b38; background: #e7ddd0; }
+      * { box-sizing: border-box; }
+      body { margin: 0; }
+      main { width: min(100% - 2rem, 36rem); margin: 2rem auto; }
+      a { color: #285447; }
+      .topbar, .card { padding: 1.25rem; background: #fff; border-radius: 0.65rem; }
+      .topbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+      h1 { margin: 0; }
+      form { display: grid; gap: 1rem; margin-top: 1.5rem; }
+      label { display: grid; gap: 0.4rem; font-weight: bold; }
+      input, button { padding: 0.75rem; border: 1px solid #9db8b0; border-radius: 0.35rem; font: inherit; }
+      button { color: #fff; background: #508879; border: 0; font-weight: bold; cursor: pointer; }
+      .readonly { color: #55706a; }
+      .message { min-height: 1.25rem; color: #8d2929; }
+      .message.success { color: #285447; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header class="topbar">
+        <h1>Account Settings</h1>
+        <a href="/">Back to dashboard</a>
+      </header>
+
+      <form id="account-form" class="card">
+        <label for="name">
+          Display name
+          <input id="name" name="name" type="text" autocomplete="name" required />
+        </label>
+        <p class="readonly">Email: <strong id="email">Loading...</strong></p>
+
+        <h2>Change password</h2>
+        <label for="currentPassword">
+          Current password
+          <input id="currentPassword" name="currentPassword" type="password" autocomplete="current-password" />
+        </label>
+        <label for="newPassword">
+          New password
+          <input id="newPassword" name="newPassword" type="password" autocomplete="new-password" />
+        </label>
+        <label for="confirmPassword">
+          Confirm new password
+          <input id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" />
+        </label>
+
+        <button type="submit">Save changes</button>
+        <p id="form-message" class="message" role="status" aria-live="polite"></p>
+      </form>
+    </main>
+
+    <script define:vars={{ apiUrl }}>
+      const form = document.querySelector("#account-form");
+      const message = document.querySelector("#form-message");
+      const nameInput = document.querySelector("#name");
+      const emailOutput = document.querySelector("#email");
+
+      async function loadAccount() {
+        const response = await fetch(`${apiUrl}/api/v1/auth/me`, {
+          credentials: "include"
+        });
+        if (response.status === 401) {
+          window.location.href = "/login";
+          return;
+        }
+        if (!response.ok) throw new Error("Unable to load account");
+
+        const result = await response.json();
+        if (nameInput instanceof HTMLInputElement) nameInput.value = result.user.name;
+        if (emailOutput instanceof HTMLElement) emailOutput.textContent = result.user.email;
+      }
+
+      form?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!(form instanceof HTMLFormElement) || !(message instanceof HTMLElement)) return;
+
+        const data = Object.fromEntries(new FormData(form));
+        message.className = "message";
+        message.textContent = "Saving changes...";
+
+        try {
+          const response = await fetch(`${apiUrl}/api/v1/users/me`, {
+            method: "PATCH",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+          });
+          const result = await response.json();
+
+          if (!response.ok) {
+            message.textContent =
+              result.details?.join(". ") ?? result.error ?? "Unable to save changes.";
+            return;
+          }
+
+          if (nameInput instanceof HTMLInputElement) nameInput.value = result.user.name;
+          form.reset();
+          if (nameInput instanceof HTMLInputElement) nameInput.value = result.user.name;
+          message.className = "message success";
+          message.textContent = "Account settings saved.";
+        } catch {
+          message.textContent = "Unable to reach the server. Please try again.";
+        }
+      });
+
+      loadAccount().catch(() => {
+        if (message instanceof HTMLElement) {
+          message.textContent = "Unable to load account settings.";
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,45 @@
+{
+  "name": "family-cabin-project-management",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "server:dev": "tsx watch server/app.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src server tests",
+    "format": "prettier --write README.md src server tests package.json astro.config.mjs tsconfig.json",
+    "format:check": "prettier --check README.md src server tests package.json astro.config.mjs tsconfig.json",
+    "audit": "npm audit --audit-level=high",
+    "smoke": "vitest run tests/integration/health.test.ts"
+  },
+  "dependencies": {
+    "@astrojs/node": "^11.1.14",
+    "astro": "^7.4.13",
+    "bcryptjs": "^3.0.3",
+    "connect-mongo": "^6.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.10",
+    "express": "^5.1.0",
+    "express-session": "^1.19.0",
+    "mongoose": "^9.12.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.5",
+    "@types/express-session": "^1.19.0",
+    "@types/node": "^24.10.0",
+    "@types/supertest": "^6.0.3",
+    "@typescript-eslint/eslint-plugin": "^8.73.0",
+    "@typescript-eslint/parser": "^8.73.0",
+    "eslint": "^10.15.0",
+    "eslint-plugin-astro": "^3.2.1",
+    "prettier": "^3.10.1",
+    "supertest": "^7.1.4",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.1"
+  }
+}

@@ -1,0 +1,173 @@
+---
+const title = "Log in | Family Cabin PM";
+const apiUrl = import.meta.env.PUBLIC_API_URL ?? "http://localhost:3000";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content="Log in to Family Cabin PM" />
+    <title>{title}</title>
+    <style>
+      :root {
+        font-family: Arial, sans-serif;
+        color: #263b38;
+        background: #e7ddd0;
+        font-synthesis: none;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        display: grid;
+        min-height: 100vh;
+        margin: 0;
+        place-items: center;
+      }
+
+      main {
+        width: min(100% - 2rem, 28rem);
+        padding: 2rem;
+        background: #fff;
+        border-radius: 0.65rem;
+        box-shadow: 0 2px 6px rgb(38 59 56 / 10%);
+      }
+
+      h1 {
+        margin: 0;
+      }
+
+      .subtitle {
+        margin: 0.5rem 0 2rem;
+        color: #55706a;
+      }
+
+      form {
+        display: grid;
+        gap: 1rem;
+      }
+
+      label {
+        display: grid;
+        gap: 0.4rem;
+        font-weight: bold;
+      }
+
+      input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #9db8b0;
+        border-radius: 0.35rem;
+        font: inherit;
+      }
+
+      input:focus {
+        outline: 3px solid #a9d0c4;
+        outline-offset: 2px;
+      }
+
+      button {
+        padding: 0.8rem 1rem;
+        color: #fff;
+        background: #508879;
+        border: 0;
+        border-radius: 0.35rem;
+        font: inherit;
+        font-weight: bold;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #3e7063;
+      }
+
+      .register-link {
+        margin: 1.5rem 0 0;
+        text-align: center;
+      }
+
+      .form-message {
+        min-height: 1.25rem;
+        margin: 1rem 0 0;
+        color: #8d2929;
+      }
+
+      .form-message.success {
+        color: #285447;
+      }
+
+      a {
+        color: #285447;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Welcome back</h1>
+      <p class="subtitle">Log in to manage the family cabin.</p>
+
+      <form id="login-form" method="post" action={`${apiUrl}/api/v1/auth/login`}>
+        <label for="email">
+          Email
+          <input id="email" name="email" type="email" autocomplete="email" required />
+        </label>
+
+        <label for="password">
+          Password
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            required
+          />
+        </label>
+
+        <button type="submit">Log in</button>
+      </form>
+      <p id="form-message" class="form-message" role="status" aria-live="polite"></p>
+
+      <p class="register-link">
+        Need an account? <a href="/register">Create one</a>
+      </p>
+    </main>
+    <script>
+      const form = document.querySelector("#login-form");
+      const message = document.querySelector("#form-message");
+
+      form?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!(form instanceof HTMLFormElement) || !(message instanceof HTMLElement)) return;
+
+        message.className = "form-message";
+        message.textContent = "Logging in...";
+
+        try {
+          const response = await fetch(form.action, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(Object.fromEntries(new FormData(form)))
+          });
+          const result = await response.json();
+
+          if (!response.ok) {
+            message.textContent =
+              result.details?.join(". ") ?? result.error ?? "Login failed.";
+            return;
+          }
+
+          message.className = "form-message success";
+          message.textContent = `Welcome back, ${result.user.name}.`;
+          window.location.href = "/";
+        } catch {
+          message.textContent = "Unable to reach the server. Please try again.";
+        }
+      });
+    </script>
+  </body>
+</html>
