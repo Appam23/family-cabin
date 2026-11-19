@@ -1,6 +1,17 @@
 ---
 description: Generate an implementation plan for new features or refactoring existing code.
-tools: ["codebase","editFiles","fetch","findTestFiles","githubRepo","search","usages","createFile","fileSearch"]
+tools:
+  [
+    "codebase",
+    "editFiles",
+    "fetch",
+    "findTestFiles",
+    "githubRepo",
+    "search",
+    "usages",
+    "createFile",
+    "fileSearch"
+  ]
 model: Claude Sonnet 3.5
 ---
 
@@ -15,5 +26,8 @@ The plan consists of a Markdown document that describes the implementation plan,
 - Overview: A brief description of the feature or refactoring task.
 - Requirements: A list of requirements for the feature or refactoring task.
 - Implementation Steps: A detailed list of steps to implement the feature or refactoring task.
+- Data Model: A description of any new or modified data structures or database schema.
+- API Design: If applicable, a description of any new or modified API endpoints.
+- UI/UX Design: If applicable, wireframes or mockups of any new or modified user interfaces.
 - Testing: A list of tests that need to be implemented to verify the feature or refactoring task.
 - Sprint Planning: A breakdown of the implementation steps into sprints, including priorities and estimated time for each step.

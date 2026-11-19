@@ -50,6 +50,7 @@ Prefer simple, well-documented solutions. Avoid unnecessary dependencies and com
 ### Frontend
 
 - Use a multi-page architecture
+- SSG where applicable (Astro or equivalent)
 - Responsive design for mobile and desktop
 - Use HTML, CSS and JavaScript/TypeScript **no tailwind!**
 - Use Svelte v5 as needed for interactive components
