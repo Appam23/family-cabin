@@ -6,11 +6,19 @@ const apiUrl =
   "https://family-cabin-api.onrender.com";
 
 export const ALL: APIRoute = async ({ params, request, url }) => {
+  const upstreamHeaders = new Headers();
+  const contentType = request.headers.get("content-type");
+  const cookie = request.headers.get("cookie");
+
+  if (contentType) upstreamHeaders.set("content-type", contentType);
+  if (cookie) upstreamHeaders.set("cookie", cookie);
+  upstreamHeaders.set("origin", "https://family-cabin-1.onrender.com");
+
   const apiRequest = new Request(
     `${apiUrl}/api/v1/${params.path}${url.search}`,
     {
       method: request.method,
-      headers: request.headers,
+      headers: upstreamHeaders,
       body:
         request.method === "GET" || request.method === "HEAD"
           ? undefined
@@ -22,12 +30,18 @@ export const ALL: APIRoute = async ({ params, request, url }) => {
   try {
     const apiResponse = await fetch(apiRequest);
     const headers = new Headers(apiResponse.headers);
-    const setCookie = apiResponse.headers.get("set-cookie");
+    const setCookie =
+      (
+        apiResponse.headers as Headers & {
+          getSetCookie?: () => string[];
+        }
+      ).getSetCookie?.()[0] ?? apiResponse.headers.get("set-cookie");
 
     if (setCookie) {
       const sameOriginCookie = setCookie
         .replace(/;\s*Domain=[^;]*/gi, "")
-        .replace(/;\s*SameSite=(?:None|Strict)/gi, "; SameSite=Lax");
+        .replace(/;\s*SameSite=(?:None|Strict)/gi, "")
+        .replace(/;\s*Secure/gi, "");
       headers.set("set-cookie", sameOriginCookie);
     }
 
