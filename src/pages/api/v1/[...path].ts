@@ -3,7 +3,9 @@ import type { APIRoute } from "astro";
 const apiUrl =
   process.env.PUBLIC_API_URL ??
   import.meta.env.PUBLIC_API_URL ??
-  "https://family-cabin-api.onrender.com";
+  (process.env.NODE_ENV === "production"
+    ? "https://family-cabin-api.onrender.com"
+    : "http://localhost:3000");
 
 export const ALL: APIRoute = async ({ params, request, url }) => {
   const upstreamHeaders = new Headers();
@@ -12,7 +14,12 @@ export const ALL: APIRoute = async ({ params, request, url }) => {
 
   if (contentType) upstreamHeaders.set("content-type", contentType);
   if (cookie) upstreamHeaders.set("cookie", cookie);
-  upstreamHeaders.set("origin", "https://family-cabin-1.onrender.com");
+  const origin =
+    request.headers.get("origin") ??
+    (process.env.NODE_ENV === "production"
+      ? "https://family-cabin-1.onrender.com"
+      : "http://localhost:4321");
+  upstreamHeaders.set("origin", origin);
 
   const apiRequest = new Request(
     `${apiUrl}/api/v1/${params.path}${url.search}`,
