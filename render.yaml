@@ -14,7 +14,7 @@ services:
       - key: SESSION_SECRET
         generateValue: true
       - key: FRONTEND_URL
-        sync: false
+        value: https://family-cabin-1.onrender.com
 
   - type: web
     name: family-cabin

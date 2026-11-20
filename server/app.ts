@@ -13,9 +13,23 @@ export const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+const allowedOrigins = new Set(
+  [
+    process.env.FRONTEND_URL,
+    "https://family-cabin-1.onrender.com",
+    "http://localhost:4321"
+  ].filter((origin): origin is string => Boolean(origin))
+);
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL ?? "http://localhost:4321",
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.has(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("Origin is not allowed by CORS"));
+    },
     credentials: true
   })
 );
