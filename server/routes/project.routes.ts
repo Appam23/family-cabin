@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireAuth } from "../middleware/require-auth.js";
 import { Project } from "../models/project.js";
 import { User } from "../models/user.js";
+import { canManageResource } from "../services/authorization.js";
 
 export const projectRouter = Router();
 
@@ -29,7 +30,12 @@ projectRouter.get("/", async (request, response) => {
     ];
   }
 
-  const projects = await Project.find(filter).sort({ updatedAt: -1 }).lean();
+  const projects = await Project.find(filter)
+    .populate("assigneeId", "name")
+    .sort({ updatedAt: -1 })
+    .lean();
+  const currentUser = await User.findById(request.session.userId).lean();
+  const isAdmin = currentUser?.role === "admin";
   response.json({
     projects: projects.map((project) => ({
       ...project,
@@ -39,7 +45,10 @@ projectRouter.get("/", async (request, response) => {
         project.status !== "completed",
       canReopen:
         project.assigneeId?.toString() === request.session.userId &&
-        project.status === "completed"
+        project.status === "completed",
+      canManage:
+        isAdmin || project.createdById.toString() === request.session.userId,
+      canReassign: isAdmin
     }))
   });
 });
@@ -80,11 +89,19 @@ projectRouter.get("/:projectId", async (request, response) => {
   }
 
   const currentUser = await User.findById(request.session.userId).lean();
-  const canManage =
-    project.createdById.toString() === request.session.userId ||
-    currentUser?.role === "admin";
+  const canManage = canManageResource(
+    currentUser?.role,
+    request.session.userId,
+    project.createdById.toString()
+  );
 
-  response.json({ project: { ...project, canManage } });
+  response.json({
+    project: {
+      ...project,
+      canManage,
+      canReassign: currentUser?.role === "admin"
+    }
+  });
 });
 
 projectRouter.patch("/:projectId", async (request, response) => {
@@ -97,8 +114,11 @@ projectRouter.patch("/:projectId", async (request, response) => {
 
   const currentUser = await User.findById(request.session.userId).lean();
   if (
-    project.createdById.toString() !== request.session.userId &&
-    currentUser?.role !== "admin"
+    !canManageResource(
+      currentUser?.role,
+      request.session.userId,
+      project.createdById.toString()
+    )
   ) {
     response.status(403).json({
       error: "Only the creator or an administrator can edit this project"
@@ -143,8 +163,11 @@ projectRouter.delete("/:projectId", async (request, response) => {
 
   const currentUser = await User.findById(request.session.userId).lean();
   if (
-    project.createdById.toString() !== request.session.userId &&
-    currentUser?.role !== "admin"
+    !canManageResource(
+      currentUser?.role,
+      request.session.userId,
+      project.createdById.toString()
+    )
   ) {
     response.status(403).json({
       error: "Only the creator or an administrator can delete this project"
@@ -173,6 +196,49 @@ projectRouter.post("/:projectId/claim", async (request, response) => {
   project.status = "in_progress";
   await project.save();
 
+  response.json({ project });
+});
+
+projectRouter.patch("/:projectId/assignee", async (request, response) => {
+  const currentUser = await User.findById(request.session.userId).lean();
+  if (currentUser?.role !== "admin") {
+    response.status(403).json({ error: "Administrator access required" });
+    return;
+  }
+
+  const project = await Project.findById(request.params.projectId);
+  if (!project) {
+    response.status(404).json({ error: "Project not found" });
+    return;
+  }
+
+  const { assigneeId } = request.body as { assigneeId?: string | null };
+  if (assigneeId === null || assigneeId === "") {
+    project.assigneeId = null;
+    project.status = "open";
+  } else {
+    if (!assigneeId) {
+      response.status(422).json({
+        error: "Validation failed",
+        details: ["A valid assignee is required"]
+      });
+      return;
+    }
+
+    const assignee = await User.findOne({
+      _id: assigneeId,
+      isActive: true
+    }).lean();
+    if (!assignee) {
+      response.status(404).json({ error: "Assignee not found" });
+      return;
+    }
+
+    project.assigneeId = assigneeId;
+    if (project.status === "open") project.status = "in_progress";
+  }
+
+  await project.save();
   response.json({ project });
 });
 

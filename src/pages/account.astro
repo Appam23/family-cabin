@@ -14,6 +14,19 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? "http://localhost:3000";
       body { margin: 0; }
       main { width: min(100% - 2rem, 36rem); margin: 2rem auto; }
       a { color: #285447; }
+      .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.7rem 1rem;
+        background: #dceee8;
+        border: 1px solid #9db8b0;
+        border-radius: 0.35rem;
+        font-weight: bold;
+        text-decoration: none;
+      }
+      .back-link:hover { background: #c7e2da; }
+      .back-link:focus-visible { outline: 3px solid #508879; outline-offset: 3px; }
       .topbar, .card { padding: 1.25rem; background: #fff; border-radius: 0.65rem; }
       .topbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
       h1 { margin: 0; }
@@ -30,7 +43,10 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? "http://localhost:3000";
     <main>
       <header class="topbar">
         <h1>Account Settings</h1>
-        <a href="/">Back to dashboard</a>
+        <a class="back-link" href="/" aria-label="Back to dashboard">
+          <span aria-hidden="true">&#8592;</span>
+          Back to dashboard
+        </a>
       </header>
 
       <form id="account-form" class="card">
@@ -39,6 +55,7 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? "http://localhost:3000";
           <input id="name" name="name" type="text" autocomplete="name" required />
         </label>
         <p class="readonly">Email: <strong id="email">Loading...</strong></p>
+        <p class="readonly">Role: <strong id="role">Loading...</strong></p>
 
         <h2>Change password</h2>
         <label for="currentPassword">
@@ -64,6 +81,7 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? "http://localhost:3000";
       const message = document.querySelector("#form-message");
       const nameInput = document.querySelector("#name");
       const emailOutput = document.querySelector("#email");
+      const roleOutput = document.querySelector("#role");
 
       async function loadAccount() {
         const response = await fetch(`${apiUrl}/api/v1/auth/me`, {
@@ -78,6 +96,10 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? "http://localhost:3000";
         const result = await response.json();
         if (nameInput instanceof HTMLInputElement) nameInput.value = result.user.name;
         if (emailOutput instanceof HTMLElement) emailOutput.textContent = result.user.email;
+        if (roleOutput instanceof HTMLElement) {
+          roleOutput.textContent =
+            result.user.role === "admin" ? "Administrator" : "Family member";
+        }
       }
 
       form?.addEventListener("submit", async (event) => {

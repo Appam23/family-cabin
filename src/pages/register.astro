@@ -178,7 +178,10 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? "http://localhost:3000";
 
           form.reset();
           message.className = "form-message success";
-          message.textContent = "Registration successful. You can now log in.";
+          message.textContent = "Registration successful. Redirecting to login...";
+          window.setTimeout(() => {
+            window.location.assign("/login");
+          }, 300);
         } catch {
           message.textContent = "Unable to reach the server. Please try again.";
         }

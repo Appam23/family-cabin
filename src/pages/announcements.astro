@@ -14,6 +14,19 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? "http://localhost:3000";
       body { margin: 0; }
       main { width: min(100% - 2rem, 56rem); margin: 2rem auto; }
       a { color: #285447; }
+      .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.7rem 1rem;
+        background: #dceee8;
+        border: 1px solid #9db8b0;
+        border-radius: 0.35rem;
+        font-weight: bold;
+        text-decoration: none;
+      }
+      .back-link:hover { background: #c7e2da; }
+      .back-link:focus-visible { outline: 3px solid #508879; outline-offset: 3px; }
       .topbar, .card { padding: 1.25rem; background: #fff; border-radius: 0.65rem; }
       .topbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
       h1 { margin: 0; }
@@ -46,7 +59,10 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? "http://localhost:3000";
     <main>
       <header class="topbar">
         <h1>Announcements</h1>
-        <a href="/">Back to dashboard</a>
+        <a class="back-link" href="/" aria-label="Back to dashboard">
+          <span aria-hidden="true">&#8592;</span>
+          Back to dashboard
+        </a>
       </header>
 
       <form id="announcement-form" class="card">
@@ -111,7 +127,7 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? "http://localhost:3000";
           author.textContent = `Published by ${announcement.authorId?.name ?? "Family member"}`;
           card.append(title, body, author);
 
-          if (currentUser && announcement.authorId?._id === currentUser.id) {
+          if (currentUser && announcement.canManage) {
             const actions = document.createElement("div");
             actions.className = "actions";
             const editButton = document.createElement("button");

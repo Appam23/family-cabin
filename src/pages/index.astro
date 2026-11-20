@@ -36,14 +36,15 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? "http://localhost:3000";
 
       header {
         grid-column: 1 / -1;
+        position: relative;
         display: flex;
         flex-direction: column;
         justify-content: center;
+        align-items: flex-end;
         padding: 1.75rem 2rem;
-        min-height: 240px;
-        background:
-          linear-gradient(rgb(12 38 35 / 58%), rgb(12 38 35 / 58%)),
-          url("/images/cabin-header.svg") center 58% / cover no-repeat;
+        min-height: 420px;
+        overflow: hidden;
+        background: url("/images/Cabin.png") center / 100% 100% no-repeat;
         border-bottom: 1px solid #d5e0dc;
         text-align: center;
         color: #fff;
@@ -52,7 +53,14 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? "http://localhost:3000";
           0 1px 2px rgb(8 28 26 / 100%);
       }
 
+      header::before {
+        content: none;
+      }
+
       header h1 {
+        position: relative;
+        z-index: 1;
+        width: 58%;
         margin: 0;
         font-size: 2.7rem;
         line-height: 1.1;
@@ -61,6 +69,9 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? "http://localhost:3000";
       }
 
       header p {
+        position: relative;
+        z-index: 1;
+        width: 58%;
         margin: 0.55rem 0 0;
         color: #fff;
         font-size: 1.25rem;
@@ -80,12 +91,25 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? "http://localhost:3000";
       .profile-avatar {
         width: 78px;
         height: 78px;
-        margin: 0 auto 1.25rem;
+        margin: 0;
         display: block;
         border: 4px solid rgb(255 255 255 / 85%);
         border-radius: 50%;
         object-fit: cover;
         box-shadow: 0 4px 12px rgb(35 71 63 / 35%);
+      }
+
+      .profile-welcome {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 1.25rem;
+      }
+
+      .profile-welcome .profile-avatar {
+        flex: 0 0 52px;
+        width: 52px;
+        height: 52px;
       }
 
       nav a {
@@ -119,6 +143,10 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? "http://localhost:3000";
         margin-top: 3rem;
         color: #fff;
         font-size: 0.9rem;
+      }
+
+      .profile-welcome .welcome {
+        margin: 0;
       }
 
       main {
@@ -235,18 +263,20 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? "http://localhost:3000";
       </header>
 
       <aside>
-        <img
-          class="profile-avatar"
-          src="/images/profile-avatar.svg"
-          alt="Profile avatar"
-        />
+        <div class="profile-welcome">
+          <img
+            class="profile-avatar"
+            src="/images/profile-avatar.svg"
+            alt="Profile avatar"
+          />
+          <p class="welcome">Welcome, <span id="user-name">family member</span></p>
+        </div>
         <nav aria-label="Main navigation">
           <a href="/" aria-current="page">Dashboard</a>
           <a href="/projects">Projects</a>
           <a href="/announcements">Announcements</a>
           <a href="/account">Account settings</a>
         </nav>
-        <p class="welcome">Welcome, <span id="user-name">family member</span></p>
         <button id="logout-button" class="logout-button" type="button">Log out</button>
       </aside>
 
@@ -283,7 +313,9 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? "http://localhost:3000";
         meta.className = "project-meta";
 
         const assignee = document.createElement("div");
-        assignee.textContent = project.assigneeId ? "Assigned" : "Assigned to: Unassigned";
+        assignee.textContent = project.assigneeId?.name
+          ? `Assigned to: ${project.assigneeId.name}`
+          : "Assigned to: Unassigned";
 
         const priority = document.createElement("div");
         priority.className = `tag${project.priority === "urgent" ? " urgent" : ""}`;
@@ -316,8 +348,14 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? "http://localhost:3000";
 
       async function loadDashboardData() {
         const [projectResponse, announcementResponse] = await Promise.all([
-          fetch(`${apiUrl}/api/v1/projects`, { credentials: "include" }),
-          fetch(`${apiUrl}/api/v1/announcements`, { credentials: "include" })
+          fetch(`${apiUrl}/api/v1/projects`, {
+            credentials: "include",
+            cache: "no-store"
+          }),
+          fetch(`${apiUrl}/api/v1/announcements`, {
+            credentials: "include",
+            cache: "no-store"
+          })
         ]);
 
         if (projectResponse.status === 401 || announcementResponse.status === 401) {

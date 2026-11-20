@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/require-auth.js";
 import { Announcement } from "../models/announcement.js";
+import { User } from "../models/user.js";
+import { canManageResource } from "../services/authorization.js";
 
 export const announcementRouter = Router();
 
@@ -11,8 +13,18 @@ announcementRouter.get("/", async (request, response) => {
     .sort({ isUrgent: -1, publishedAt: -1 })
     .populate("authorId", "name")
     .lean();
+  const currentUser = await User.findById(request.session.userId).lean();
 
-  response.json({ announcements });
+  response.json({
+    announcements: announcements.map((announcement) => ({
+      ...announcement,
+      canManage: canManageResource(
+        currentUser?.role,
+        request.session.userId,
+        announcement.authorId._id.toString()
+      )
+    }))
+  });
 });
 
 announcementRouter.post("/", async (request, response) => {
@@ -51,10 +63,17 @@ announcementRouter.patch("/:announcementId", async (request, response) => {
     return;
   }
 
-  if (announcement.authorId.toString() !== request.session.userId) {
-    response
-      .status(403)
-      .json({ error: "Only the author can edit this announcement" });
+  const currentUser = await User.findById(request.session.userId).lean();
+  if (
+    !canManageResource(
+      currentUser?.role,
+      request.session.userId,
+      announcement.authorId.toString()
+    )
+  ) {
+    response.status(403).json({
+      error: "Only the author or an administrator can edit this announcement"
+    });
     return;
   }
 
@@ -91,10 +110,17 @@ announcementRouter.delete("/:announcementId", async (request, response) => {
     return;
   }
 
-  if (announcement.authorId.toString() !== request.session.userId) {
-    response
-      .status(403)
-      .json({ error: "Only the author can remove this announcement" });
+  const currentUser = await User.findById(request.session.userId).lean();
+  if (
+    !canManageResource(
+      currentUser?.role,
+      request.session.userId,
+      announcement.authorId.toString()
+    )
+  ) {
+    response.status(403).json({
+      error: "Only the author or an administrator can remove this announcement"
+    });
     return;
   }
 

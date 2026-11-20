@@ -17,9 +17,30 @@ const { id } = Astro.params;
       .card { padding: 1.25rem; background: #fff; border-radius: 0.65rem; }
       form { display: grid; gap: 1rem; margin-top: 1.25rem; }
       label { display: grid; gap: 0.4rem; font-weight: bold; }
+      #admin-assignment { display: grid; gap: 0.75rem; }
+      #admin-assignment[hidden] { display: none; }
       input, textarea, select, button { padding: 0.75rem; border: 1px solid #9db8b0; border-radius: 0.35rem; font: inherit; }
       textarea { min-height: 7rem; resize: vertical; }
       button { color: #fff; background: #508879; border: 0; font-weight: bold; cursor: pointer; }
+      button:hover { background: #3e7063; }
+      .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        padding: 0.7rem 1rem;
+        color: #285447;
+        background: #dceee8;
+        border: 1px solid #9db8b0;
+        border-radius: 0.35rem;
+        font-weight: bold;
+        text-decoration: none;
+      }
+      .back-link:hover { background: #c7e2da; }
+      .back-link:focus-visible {
+        outline: 3px solid #508879;
+        outline-offset: 3px;
+      }
       .actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
       .delete { background: #a33d3d; }
       .confirm-dialog { max-width: 24rem; padding: 0; border: 0; border-radius: 0.65rem; }
@@ -35,7 +56,10 @@ const { id } = Astro.params;
   </head>
   <body>
     <main>
-      <a href="/projects">Back to projects</a>
+      <a class="back-link" href="/projects" aria-label="Back to projects">
+        <span aria-hidden="true">&#8592;</span>
+        Back to projects
+      </a>
       <section class="card">
         <h1 id="project-title">Project details</h1>
         <form id="project-form" hidden>
@@ -51,6 +75,14 @@ const { id } = Astro.params;
             </select>
           </label>
           <label>Due date <input id="dueDate" name="dueDate" type="date" /></label>
+          <div id="admin-assignment" hidden>
+            <label for="assignee">Assigned family member
+              <select id="assignee">
+                <option value="">Unassigned</option>
+              </select>
+            </label>
+            <button id="save-assignee" type="button">Save assignment</button>
+          </div>
           <div class="actions">
             <button type="submit">Save changes</button>
             <button id="delete-project" class="delete" type="button">Delete project</button>
@@ -89,11 +121,29 @@ const { id } = Astro.params;
         const description = document.querySelector("#description");
         const priority = document.querySelector("#priority");
         const dueDate = document.querySelector("#dueDate");
+        const adminAssignment = document.querySelector("#admin-assignment");
+        const assigneeSelect = document.querySelector("#assignee");
         if (title instanceof HTMLInputElement) title.value = project.title;
         if (description instanceof HTMLTextAreaElement) description.value = project.description;
         if (priority instanceof HTMLSelectElement) priority.value = project.priority;
         if (dueDate instanceof HTMLInputElement && project.dueDate) {
           dueDate.value = new Date(project.dueDate).toISOString().slice(0, 10);
+        }
+        if (adminAssignment instanceof HTMLElement) {
+          adminAssignment.hidden = !project.canReassign;
+        }
+        if (project.canReassign && assigneeSelect instanceof HTMLSelectElement) {
+          const usersResponse = await fetch(`${apiUrl}/api/v1/users`, { credentials: "include" });
+          if (usersResponse.ok) {
+            const { users } = await usersResponse.json();
+            for (const user of users) {
+              const option = document.createElement("option");
+              option.value = user.id;
+              option.textContent = user.name;
+              assigneeSelect.append(option);
+            }
+            assigneeSelect.value = project.assigneeId ?? "";
+          }
         }
       }
 
@@ -116,6 +166,25 @@ const { id } = Astro.params;
         if (titleHeading instanceof HTMLElement) titleHeading.textContent = result.project.title;
         message.className = "message success";
         message.textContent = "Project saved.";
+      });
+
+      document.querySelector("#save-assignee")?.addEventListener("click", async () => {
+        const assigneeSelect = document.querySelector("#assignee");
+        if (!(assigneeSelect instanceof HTMLSelectElement) || !(message instanceof HTMLElement)) return;
+
+        const response = await fetch(`${apiUrl}/api/v1/projects/${id}/assignee`, {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ assigneeId: assigneeSelect.value || null })
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          message.textContent = result.details?.join(". ") ?? result.error ?? "Unable to save assignment.";
+          return;
+        }
+        message.className = "message success";
+        message.textContent = "Project assignment saved.";
       });
 
       async function deleteProject() {

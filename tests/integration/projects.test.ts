@@ -27,4 +27,20 @@ describe("project routes", () => {
     expect(editResponse.status).toBe(401);
     expect(deleteResponse.status).toBe(401);
   });
+
+  it("requires authentication to reassign a project", async () => {
+    const response = await request(app)
+      .patch("/api/v1/projects/example-id/assignee")
+      .send({ assigneeId: "example-user" });
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ error: "Authentication required" });
+  });
+
+  it("requires authentication to list users", async () => {
+    const response = await request(app).get("/api/v1/users");
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ error: "Authentication required" });
+  });
 });

@@ -7,6 +7,27 @@ export const userRouter = Router();
 
 userRouter.use(requireAuth);
 
+userRouter.get("/", async (request, response) => {
+  const currentUser = await User.findById(request.session.userId).lean();
+  if (currentUser?.role !== "admin") {
+    response.status(403).json({ error: "Administrator access required" });
+    return;
+  }
+
+  const users = await User.find({ isActive: true })
+    .select("_id name email role")
+    .sort({ name: 1 })
+    .lean();
+  response.json({
+    users: users.map((user) => ({
+      id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      role: user.role
+    }))
+  });
+});
+
 userRouter.patch("/me", async (request, response) => {
   const { name, currentPassword, newPassword, confirmPassword } =
     request.body as {
