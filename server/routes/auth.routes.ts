@@ -10,7 +10,7 @@ import {
 
 export const authRouter = Router();
 
-authRouter.post("/login", async (request, response) => {
+authRouter.post("/login", async (request, response, next) => {
   const input = request.body as Partial<LoginInput>;
   const errors = validateLoginInput(input);
 
@@ -33,14 +33,20 @@ authRouter.post("/login", async (request, response) => {
   user.lastLoginAt = new Date();
   await user.save();
   request.session.userId = user.id;
-
-  response.json({
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role
+  request.session.save((error) => {
+    if (error) {
+      next(error);
+      return;
     }
+
+    response.json({
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
   });
 });
 

@@ -11,6 +11,7 @@ import { userRouter } from "./routes/user.routes.js";
 
 export const app = express();
 
+app.set("trust proxy", 1);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 const allowedOrigins = new Set(
