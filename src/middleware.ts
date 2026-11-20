@@ -3,7 +3,7 @@ import { defineMiddleware } from "astro:middleware";
 const apiUrl =
   process.env.PUBLIC_API_URL ??
   import.meta.env.PUBLIC_API_URL ??
-  "http://localhost:3000";
+  "https://family-cabin-api.onrender.com";
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const { pathname, search } = context.url;
@@ -21,7 +21,24 @@ export const onRequest = defineMiddleware(async (context, next) => {
         : await context.request.arrayBuffer()
   });
 
-  const response = await fetch(request);
+  let response: Response;
+
+  try {
+    response = await fetch(request);
+  } catch (error) {
+    console.error("API proxy request failed", {
+      apiUrl,
+      pathname,
+      error: error instanceof Error ? error.message : String(error)
+    });
+    return new Response(
+      JSON.stringify({ error: "Unable to reach the API server" }),
+      {
+        status: 502,
+        headers: { "Content-Type": "application/json" }
+      }
+    );
+  }
   const headers = new Headers(response.headers);
 
   if (
