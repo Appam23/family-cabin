@@ -39,6 +39,23 @@ Open:
 - Frontend: `http://localhost:4321`
 - API health check: `http://localhost:3000/api/v1/health`
 
+## Render deployment
+
+This project requires two Render web services:
+
+1. Deploy `family-cabin-api` using `npm ci`, `npm run server:start`, and
+   `/api/v1/health`.
+2. Deploy `family-cabin` using `npm ci && npm run build` and `npm start`.
+
+Set these environment variables after creating both services:
+
+- API: `MONGODB_URI`, `SESSION_SECRET`, `FRONTEND_URL`, `NODE_ENV=production`
+- Frontend: `PUBLIC_API_URL`, `NODE_ENV=production`
+
+`FRONTEND_URL` must be the complete public frontend URL. `PUBLIC_API_URL` must
+be the complete public API URL. MongoDB Atlas Network Access must allow Render
+to connect.
+
 ## Quality checks
 
 ```bash
