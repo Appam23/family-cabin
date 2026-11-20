@@ -4,7 +4,7 @@ A private family application for tracking cabin projects and publishing announce
 
 ## Requirements
 
-- Node.js 20 or newer
+- Node.js 22.23.4 or newer
 - npm
 - MongoDB Atlas account or a reachable MongoDB database
 
