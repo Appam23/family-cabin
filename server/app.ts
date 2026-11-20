@@ -17,6 +17,7 @@ const allowedOrigins = new Set(
   [
     process.env.FRONTEND_URL,
     "https://family-cabin-1.onrender.com",
+    "https://family-cabin.onrender.com",
     "http://localhost:4321"
   ].filter((origin): origin is string => Boolean(origin))
 );
